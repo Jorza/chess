@@ -5,12 +5,12 @@
 # King
 # ~~Queen~~
 
+
 class Piece:
     def __init__(self, colour, x, y):
         self.x = self.validate_coord(x)
         self.y = self.validate_coord(y)
         self.colour = self.validate_colour(colour)
-        self.step = 1 if self.colour is 'w' else -1
         self.valid_moves = []
 
     @staticmethod
@@ -114,6 +114,7 @@ class Queen(RangedPiece):
 class Pawn(Piece):
     def __init__(self, colour, x, y):
         super().__init__(colour, x, y)
+        self.step = 1 if self.colour is 'w' else -1
 
     def get_valid_moves(self, board):
         valid_moves = []
