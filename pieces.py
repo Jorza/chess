@@ -2,9 +2,22 @@
 # ~~Bishop~~
 # ~~Queen~~
 # Pawn
-#  - Add en passant capturing
 # Knight
 # King
+
+# Rule - pieces cannot touch other pieces. They can check the board, but not modify anything on it
+#      - pieces do not implement how they capture other pieces
+# Piece.sprite = <PieceSprite object>
+
+import pygame
+
+
+class PieceSprite(pygame.sprite.Sprite):
+    def __init__(self, rect, image, mask):
+        super().__init__()
+        self.rect = rect
+        self.image = image
+        self.mask = mask
 
 
 class Piece:
@@ -14,6 +27,7 @@ class Piece:
         self.colour = self.validate_colour(colour)
         self.board = board_ref
         self.valid_moves = []
+        self.sprite = None
 
     @staticmethod
     def validate_coord(coord):
@@ -92,6 +106,7 @@ class RangedPiece(Piece):
 class Rook(RangedPiece):
     def __init__(self, colour, x, y, board_ref):
         super().__init__(colour, x, y, board_ref)
+        #self.sprite = Sprite
 
     def get_valid_moves(self):
         self.probe_path(self.update_higher_x)
@@ -103,6 +118,7 @@ class Rook(RangedPiece):
 class Bishop(RangedPiece):
     def __init__(self, colour, x, y, board_ref):
         super().__init__(colour, x, y, board_ref)
+        #self.sprite = Sprite
 
     def get_valid_moves(self):
         self.probe_path(self.update_higher_x_higher_y)
@@ -114,6 +130,7 @@ class Bishop(RangedPiece):
 class Queen(RangedPiece):
     def __init__(self, colour, x, y, board_ref):
         super().__init__(colour, x, y, board_ref)
+        # self.sprite = Sprite
 
     def get_valid_moves(self):
         self.probe_path(self.update_higher_x)
@@ -129,6 +146,7 @@ class Queen(RangedPiece):
 class Pawn(Piece):
     def __init__(self, colour, x, y, board_ref):
         super().__init__(colour, x, y, board_ref)
+        # self.sprite = Sprite
         self.step = 1 if self.colour is 'w' else -1
 
     def get_valid_moves(self):
@@ -149,3 +167,9 @@ class Pawn(Piece):
         left_piece = self.board[self.x - 1][self.y + self.step]
         if left_piece is not None and left_piece.colour != self.colour:
                 valid_moves.append((self.x - 1, self.y + self.step))
+
+
+class EnPassantPawn(Piece):
+    def __init__(self, colour, x, y, board_ref, pawn_ref):
+        super().__init__(colour, x, y, board_ref)
+        self.pawn = pawn_ref
