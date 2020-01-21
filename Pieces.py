@@ -1,31 +1,33 @@
-# ~~Rook~~
-# ~~Bishop~~
-# ~~Queen~~
-# ~~Pawn~~
-# ~~King~~
-# ~~Knight~~
+# Rook
+# Bishop
+# Queen
+# Pawn
+# King
+# Knight
 
 # Rule - pieces cannot touch other pieces. They can check the board, but not modify anything on it
 #      - pieces do not implement how they capture other pieces
-# Piece.sprite = <PieceSprite object>
 
 import pygame
 
 
 class PieceSprite(pygame.sprite.Sprite):
-    def __init__(self, rect, image, mask):
+    def __init__(self, image, x, y):
         super().__init__()
-        self.rect = rect
         self.image = image
-        self.mask = mask
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
 
 
 class Piece:
-    def __init__(self, colour, x, y, board_ref):
+    def __init__(self, colour, x, y, board):
+        # Grid coordinates of the piece on the board. Integers 0 to 7 only
         self.x = self.validate_coord(x)
         self.y = self.validate_coord(y)
+
         self.colour = self.validate_colour(colour)  # 0 => white, 1 => black
-        self.Board = board_ref
+        self.board = board
         self.valid_moves = []
         self.sprite = None
 
@@ -43,6 +45,20 @@ class Piece:
             raise ValueError("Colour must either be 0 (white) or 1 (black)")
         return colour
 
+    @property
+    def board_pixel_coords(self):
+        # Pixel coordinates relative to the top-left corner of the board.
+        # Used for matching sections of board over pieces to erase pieces.
+        board = self.board
+        return self.x * board.tile_size, self.y * board.tile_size
+
+    @property
+    def screen_pixel_coords(self):
+        # Pixel coordinates relative to top-left corner of the display window.
+        # Used for drawing sprites to the screen.
+        board = self.board
+        return self.x * board.tile_size + board.x_offset, self.y * board.tile_size + board.y_offset
+
     def get_valid_moves(self):
         pass
 
@@ -52,26 +68,27 @@ class Piece:
         if (x, y) in self.valid_moves:
             self.x = x
             self.y = y
+            self.sprite.rect.x, self.sprite.rect.y = self.screen_pixel_coords
             self.valid_moves.clear()
 
 
 class RangedPiece(Piece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
 
     def probe_path(self, update_func):
         try:
             # Get next space on path
             x_probe, y_probe = update_func(self.x, self.y)
             # Continue probing along path while spaces are empty
-            while self.Board.board[x_probe][y_probe] is None:
+            while self.board.piece_grid[x_probe][y_probe] is None:
                 self.valid_moves.append((x_probe, y_probe))
                 x_probe, y_probe = update_func(x_probe, y_probe)
         except ValueError:
             # Reached end of self.Board.board
             return
         # Current probed space is occupied
-        if self.Board.board[x_probe][y_probe].colour != self.colour:
+        if self.board.piece_grid[x_probe][y_probe].colour != self.colour:
             self.valid_moves.append((self.x, self.y))
 
     def update_higher_x(self, x, y):
@@ -100,9 +117,13 @@ class RangedPiece(Piece):
 
 
 class Rook(RangedPiece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        #self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_rook_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_rook_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -113,9 +134,13 @@ class Rook(RangedPiece):
 
 
 class Bishop(RangedPiece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        #self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_bishop_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_bishop_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -126,9 +151,13 @@ class Bishop(RangedPiece):
 
 
 class Queen(RangedPiece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        # self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_queen_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_queen_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -143,24 +172,28 @@ class Queen(RangedPiece):
 
 
 class Pawn(Piece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        # self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_pawn_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_pawn_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
         self.step = 1 if self.colour else -1
 
     def get_valid_moves(self):
         self.valid_moves.clear()
         # Straight movement
-        if self.Board.board[self.x][self.y + self.step] is None:
+        if self.board.piece_grid[self.x][self.y + self.step] is None:
             self.valid_moves.append((self.x, self.y + self.step))
             # Double-move if on starting rank
-            if self.Board.board[self.x][self.y + 2*self.step] is None and (self.y - self.step) % 7 == 0:
+            if self.board.piece_grid[self.x][self.y + 2*self.step] is None and (self.y - self.step) % 7 == 0:
                 self.valid_moves.append((self.x, self.y + 2*self.step))
 
         # Capture right
         try:
             new_x, new_y = self.validate_coord(self.x + 1), self.validate_coord(self.y + self.step)
-            right_piece = self.Board.board[new_x][new_y]
+            right_piece = self.board.piece_grid[new_x][new_y]
             if right_piece is not None and right_piece.colour != self.colour:
                 self.valid_moves.append((new_x, new_y))
         except ValueError:
@@ -169,7 +202,7 @@ class Pawn(Piece):
         # Capture left
         try:
             new_x, new_y = self.validate_coord(self.x - 1), self.validate_coord(self.y + self.step)
-            left_piece = self.Board.board[new_x][new_y]
+            left_piece = self.board.piece_grid[new_x][new_y]
             if left_piece is not None and left_piece.colour != self.colour:
                 self.valid_moves.append((new_x, new_y))
         except ValueError:
@@ -177,15 +210,19 @@ class Pawn(Piece):
 
 
 class EnPassantPawn(Piece):
-    def __init__(self, colour, x, y, board_ref, pawn_ref):
-        super().__init__(colour, x, y, board_ref)
+    def __init__(self, colour, x, y, board, pawn_ref):
+        super().__init__(colour, x, y, board)
         self.pawn = pawn_ref
 
 
 class King(Piece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        # self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_king_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_king_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -204,16 +241,20 @@ class King(Piece):
                     continue
 
                 new_x, new_y = self.x + delta_x, self.y + delta_y
-                new_space = self.Board.board[new_x, new_y]
+                new_space = self.board.piece_grid[new_x, new_y]
                 if new_space is None or new_space.colour != self.colour:
-                    if not self.Board.is_attacked(new_x, new_y, ~self.colour):
+                    if not self.board.is_attacked(new_x, new_y, ~self.colour):
                         self.valid_moves.append((new_x, new_y))
 
 
 class Knight(Piece):
-    def __init__(self, colour, x, y, board_ref):
-        super().__init__(colour, x, y, board_ref)
-        # self.sprite = Sprite
+    def __init__(self, colour, x, y, board):
+        super().__init__(colour, x, y, board)
+
+        image_white = pygame.image.load("assets/w_knight_svg_NoShadow-svg.png").convert_alpha()
+        image_black = pygame.image.load("assets/b_knight_svg_NoShadow-svg.png").convert_alpha()
+        image = image_white if not self.colour else image_black
+        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -230,12 +271,12 @@ class Knight(Piece):
                     continue
 
                 new_x, new_y = self.x + delta_x, self.y + delta_y
-                new_space = self.Board.board[new_x, new_y]
+                new_space = self.board.piece_grid[new_x, new_y]
                 if new_space is None or new_space.colour != self.colour:
                     self.valid_moves.append((new_x, new_y))
 
                 # Horse can also move 2 in y-direction followed by 1 in x-direction.
-                # Is equivalent to above, but with x and y switched.
-                new_space = self.Board.board[new_y, new_x]
+                # Same as above, but with x and y switched.
+                new_space = self.board.piece_grid[new_y, new_x]
                 if new_space is None or new_space.colour != self.colour:
                     self.valid_moves.append((new_y, new_x))
