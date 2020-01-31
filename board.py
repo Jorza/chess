@@ -14,7 +14,7 @@ class Board:
 
         self.tile_overlay = pygame.Surface((65, 65))
         self.tile_overlay.fill((0, 204, 0))
-        self.tile_overlay.set_alpha(0.4)
+        self.tile_overlay.set_alpha(80)
 
         self.piece_grid = self.get_grid(8, 8)
         # Bitlists for pieces active in the game (not captured).
@@ -35,6 +35,16 @@ class Board:
         for i in range(m):
             grid.append([None] * n)
         return grid
+
+    def get_board_coords(self, x, y):
+        x, y = (x - self.x_offset) // self.tile_size, (y - self.y_offset) // self.tile_size
+        if x < 0 or x > 7 or y < 0 or y > 7:
+            raise ValueError("Coordinates are not on the board")
+        return x, y
+
+    def get_pixel_coords(self, x, y):
+        # Pixel coordinates relative to top-left corner of the display window.
+        return x * self.tile_size + self.x_offset, y * self.tile_size + self.y_offset
 
     def set_pieces(self):
         # Create pieces in starting position on the board.
@@ -57,8 +67,21 @@ class Board:
                 self.piece_grid[file][back_rank] = piece
                 self.piece_sprites[colour].add(piece.sprite)
 
+    def move(self, piece, x, y):
+        pieces.Piece.validate_coord(x)
+        pieces.Piece.validate_coord(y)
+
+        self.piece_grid[piece.x][piece.y] = None
+        self.piece_grid[x][y] = piece
+        piece.x = x
+        piece.y = y
+        piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
+        piece.valid_moves.clear()
+
     def capture(self, piece):
-        pass
+        self.pieces[piece.colour][piece.id] = None
+        self.piece_grid[piece.x][piece.y] = None
+        piece.sprite.kill()
 
     def draw_board(self, surface):
         surface.blit(self.tiles, (self.x_offset, self.y_offset))

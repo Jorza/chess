@@ -29,7 +29,6 @@ class Piece:
         # Grid coordinates of the piece on the board. Integers 0 to 7 only
         self.x = self.validate_coord(x)
         self.y = self.validate_coord(y)
-        self.board.piece_grid[y][x] = self
 
         self.valid_moves = []
         self.sprite = None
@@ -49,22 +48,13 @@ class Piece:
         return colour
 
     @property
-    def screen_pixel_coords(self):
+    def pixel_coords(self):
         # Pixel coordinates relative to top-left corner of the display window.
         # Used for drawing sprites to the screen.
-        board = self.board
-        return self.x * board.tile_size + board.x_offset, self.y * board.tile_size + board.y_offset
+        return self.board.get_pixel_coords(self.x, self.y)
 
     def get_valid_moves(self):
         pass
-
-    def move(self, x, y):
-        self.board.piece_grid[self.y][self.x] = None
-        self.board.piece_grid[y][x] = self
-        self.x = x
-        self.y = y
-        self.sprite.rect.x, self.sprite.rect.y = self.screen_pixel_coords
-        self.valid_moves.clear()
 
 
 class RangedPiece(Piece):
@@ -80,7 +70,7 @@ class RangedPiece(Piece):
                 self.valid_moves.append((x_probe, y_probe))
                 x_probe, y_probe = update_func(x_probe, y_probe)
         except ValueError:
-            # Reached end of self.Board.board
+            # Reached edge of board
             return
         # Current probed space is occupied
         if self.board.piece_grid[x_probe][y_probe].colour != self.colour:
@@ -118,7 +108,7 @@ class Rook(RangedPiece):
         image_white = pygame.image.load("assets/w_rook_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_rook_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -135,7 +125,7 @@ class Bishop(RangedPiece):
         image_white = pygame.image.load("assets/w_bishop_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_bishop_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -152,7 +142,7 @@ class Queen(RangedPiece):
         image_white = pygame.image.load("assets/w_queen_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_queen_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -173,7 +163,7 @@ class Pawn(Piece):
         image_white = pygame.image.load("assets/w_pawn_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_pawn_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
         self.step = 1 if self.colour else -1
 
     def get_valid_moves(self):
@@ -182,7 +172,7 @@ class Pawn(Piece):
         if self.board.piece_grid[self.x][self.y + self.step] is None:
             self.valid_moves.append((self.x, self.y + self.step))
             # Double-move if on starting rank
-            if self.board.piece_grid[self.x][self.y + 2*self.step] is None and (self.y - self.step) % 7 == 0:
+            if (self.y - self.step) % 7 == 0 and self.board.piece_grid[self.x][self.y + 2*self.step] is None:
                 self.valid_moves.append((self.x, self.y + 2*self.step))
 
         # Capture right
@@ -217,7 +207,7 @@ class King(Piece):
         image_white = pygame.image.load("assets/w_king_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_king_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()
@@ -249,7 +239,7 @@ class Knight(Piece):
         image_white = pygame.image.load("assets/w_knight_svg_NoShadow-svg.png").convert_alpha()
         image_black = pygame.image.load("assets/b_knight_svg_NoShadow-svg.png").convert_alpha()
         image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.screen_pixel_coords)
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     def get_valid_moves(self):
         self.valid_moves.clear()

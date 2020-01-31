@@ -1,5 +1,5 @@
 import pygame
-import board
+from board import Board
 
 
 # Global parameters
@@ -10,16 +10,9 @@ FPS = 60
 
 class Chess:
     def __init__(self):
-        self.board = board.Board()
+        self.board = Board()
         self.active_colour = 0  # 0 => white, 1 => black
         self.held_piece = None
-
-    def get_board_coords(self, x, y):
-        board = self.board
-        x, y = (x - board.x_offset) // board.tile_size, (y - board.y_offset) // board.tile_size
-        if x < 0 or x > 7 or y < 0 or y > 7:
-            raise ValueError("Coordinates are not on the board")
-        return x, y
 
     def process_events(self):
         for event in pygame.event.get():
@@ -29,7 +22,7 @@ class Chess:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
                     try:
-                        x, y = self.get_board_coords(*event.pos)
+                        x, y = self.board.get_board_coords(*event.pos)
                         piece = self.board.piece_grid[x][y]
                         if piece and piece.colour == self.active_colour:
                             self.held_piece = piece
@@ -42,25 +35,34 @@ class Chess:
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT and self.held_piece:
                     try:
-                        x, y = self.get_board_coords(*event.pos)
+                        x, y = self.board.get_board_coords(*event.pos)
+                    except ValueError:
+                        # Released outside of board. Drop the piece back to current position
+                        pass
+                    else:
                         if (x, y) in self.held_piece.valid_moves:
                             captured_piece = self.board.piece_grid[x][y]
                             if captured_piece:
-                                board.capture(captured_piece)
-                            piece = self.held_piece
-                            piece.move(x, y)
-                            piece.sprite.add(self.board.piece_sprites[piece.colour])  # Add to group of sprites to draw
-                            self.held_piece = None  # Drop piece
+                                self.board.capture(captured_piece)
+                            self.board.move(self.held_piece, x, y)
                             self.active_colour = not self.active_colour  # Switch players after a move
-                    except ValueError:
-                        # Released outside of board. Drop the piece back to current position
-                        piece = self.held_piece
-                        piece.sprite.rect.x, piece.sprite.rect.y = piece.screen_pixel_coords  # Reset sprite position
-                        piece.sprite.add(self.board.piece_sprites[piece.colour])  # Add to group of sprites to draw
+                    sprite_group = self.board.piece_sprites[self.held_piece.colour]
+                    self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
+                    self.held_piece = None  # Drop piece
 
     def draw_frame(self, screen):
         screen.fill(BLACK)
         self.board.draw_board(screen)
+        if self.held_piece:
+            for (x, y) in self.held_piece.valid_moves:
+                pos = self.board.get_pixel_coords(x, y)
+                screen.blit(self.board.tile_overlay, pos)
+            screen.blit(self.board.tile_overlay, self.held_piece.sprite.rect)
+
+            tile_size = self.board.tile_size
+            pos = pygame.mouse.get_pos()
+            pos = pos[0] - tile_size // 2, pos[1] - tile_size // 2
+            screen.blit(self.held_piece.sprite.image, pos)
 
 
 def play_chess():

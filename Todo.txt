@@ -1,0 +1,7 @@
+1. Fix valid moves
+	- for ranged pieces
+	- for knight
+	- for king
+
+200. Add pawn promotions
+201. Add check detection
