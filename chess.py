@@ -58,6 +58,7 @@ class Chess:
                 pos = self.board.get_pixel_coords(x, y)
                 screen.blit(self.board.tile_overlay, pos)
             screen.blit(self.board.tile_overlay, self.held_piece.sprite.rect)
+            screen.blit(self.board.tile_overlay, self.held_piece.sprite.rect)
 
             tile_size = self.board.tile_size
             pos = pygame.mouse.get_pos()

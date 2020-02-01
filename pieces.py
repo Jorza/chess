@@ -31,6 +31,7 @@ class Piece:
         self.y = self.validate_coord(y)
 
         self.valid_moves = []
+        self.protected_squares = []
         self.sprite = None
 
     @staticmethod
@@ -54,6 +55,14 @@ class Piece:
         return self.board.get_pixel_coords(self.x, self.y)
 
     def get_valid_moves(self):
+        self.valid_moves.clear()
+        self.get_moves_get_protected_squares()
+
+    def get_protected_squares(self):
+        self.protected_squares.clear()
+        self.get_moves_get_protected_squares(protected_squares_flag=True)
+
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
         pass
 
 
@@ -61,20 +70,26 @@ class RangedPiece(Piece):
     def __init__(self, colour, x, y, board, piece_id):
         super().__init__(colour, x, y, board, piece_id)
 
-    def probe_path(self, update_func):
+    def probe_path(self, update_func, protected_squares_flag=False):
         try:
             # Get next space on path
             x_probe, y_probe = update_func(self.x, self.y)
             # Continue probing along path while spaces are empty
             while self.board.piece_grid[x_probe][y_probe] is None:
-                self.valid_moves.append((x_probe, y_probe))
+                if protected_squares_flag:
+                    self.protected_squares.append((x_probe, y_probe))
+                else:
+                    self.valid_moves.append((x_probe, y_probe))
                 x_probe, y_probe = update_func(x_probe, y_probe)
         except ValueError:
             # Reached edge of board
             return
         # Current probed space is occupied
-        if self.board.piece_grid[x_probe][y_probe].colour != self.colour:
-            self.valid_moves.append((self.x, self.y))
+        if protected_squares_flag:
+            self.protected_squares.append((x_probe, y_probe))
+        else:
+            if self.board.piece_grid[x_probe][y_probe].colour != self.colour:
+                self.valid_moves.append((x_probe, y_probe))
 
     def update_higher_x(self, x, y):
         return self.validate_coord(x + 1), y
@@ -110,12 +125,11 @@ class Rook(RangedPiece):
         image = image_white if not self.colour else image_black
         self.sprite = PieceSprite(image, *self.pixel_coords)
 
-    def get_valid_moves(self):
-        self.valid_moves.clear()
-        self.probe_path(self.update_higher_x)
-        self.probe_path(self.update_lower_x)
-        self.probe_path(self.update_higher_y)
-        self.probe_path(self.update_lower_y)
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
+        self.probe_path(self.update_higher_x, protected_squares_flag)
+        self.probe_path(self.update_lower_x, protected_squares_flag)
+        self.probe_path(self.update_higher_y, protected_squares_flag)
+        self.probe_path(self.update_lower_y, protected_squares_flag)
 
 
 class Bishop(RangedPiece):
@@ -127,12 +141,11 @@ class Bishop(RangedPiece):
         image = image_white if not self.colour else image_black
         self.sprite = PieceSprite(image, *self.pixel_coords)
 
-    def get_valid_moves(self):
-        self.valid_moves.clear()
-        self.probe_path(self.update_higher_x_higher_y)
-        self.probe_path(self.update_lower_x_higher_y)
-        self.probe_path(self.update_higher_x_lower_y)
-        self.probe_path(self.update_lower_x_lower_y)
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
+        self.probe_path(self.update_higher_x_higher_y, protected_squares_flag)
+        self.probe_path(self.update_lower_x_higher_y, protected_squares_flag)
+        self.probe_path(self.update_higher_x_lower_y, protected_squares_flag)
+        self.probe_path(self.update_lower_x_lower_y, protected_squares_flag)
 
 
 class Queen(RangedPiece):
@@ -144,16 +157,15 @@ class Queen(RangedPiece):
         image = image_white if not self.colour else image_black
         self.sprite = PieceSprite(image, *self.pixel_coords)
 
-    def get_valid_moves(self):
-        self.valid_moves.clear()
-        self.probe_path(self.update_higher_x)
-        self.probe_path(self.update_lower_x)
-        self.probe_path(self.update_higher_y)
-        self.probe_path(self.update_lower_y)
-        self.probe_path(self.update_higher_x_higher_y)
-        self.probe_path(self.update_lower_x_higher_y)
-        self.probe_path(self.update_higher_x_lower_y)
-        self.probe_path(self.update_lower_x_lower_y)
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
+        self.probe_path(self.update_higher_x, protected_squares_flag)
+        self.probe_path(self.update_lower_x, protected_squares_flag)
+        self.probe_path(self.update_higher_y, protected_squares_flag)
+        self.probe_path(self.update_lower_y, protected_squares_flag)
+        self.probe_path(self.update_higher_x_higher_y, protected_squares_flag)
+        self.probe_path(self.update_lower_x_higher_y, protected_squares_flag)
+        self.probe_path(self.update_higher_x_lower_y, protected_squares_flag)
+        self.probe_path(self.update_lower_x_lower_y, protected_squares_flag)
 
 
 class Pawn(Piece):
@@ -166,8 +178,7 @@ class Pawn(Piece):
         self.sprite = PieceSprite(image, *self.pixel_coords)
         self.step = 1 if self.colour else -1
 
-    def get_valid_moves(self):
-        self.valid_moves.clear()
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
         # Straight movement
         if self.board.piece_grid[self.x][self.y + self.step] is None:
             self.valid_moves.append((self.x, self.y + self.step))
@@ -178,18 +189,24 @@ class Pawn(Piece):
         # Capture right
         try:
             new_x, new_y = self.validate_coord(self.x + 1), self.validate_coord(self.y + self.step)
-            right_piece = self.board.piece_grid[new_x][new_y]
-            if right_piece is not None and right_piece.colour != self.colour:
-                self.valid_moves.append((new_x, new_y))
+            if protected_squares_flag:
+                self.protected_squares.append((new_x, new_y))
+            else:
+                right_piece = self.board.piece_grid[new_x][new_y]
+                if right_piece is not None and right_piece.colour != self.colour:
+                    self.valid_moves.append((new_x, new_y))
         except ValueError:
             pass
 
         # Capture left
         try:
             new_x, new_y = self.validate_coord(self.x - 1), self.validate_coord(self.y + self.step)
-            left_piece = self.board.piece_grid[new_x][new_y]
-            if left_piece is not None and left_piece.colour != self.colour:
-                self.valid_moves.append((new_x, new_y))
+            if protected_squares_flag:
+                self.protected_squares.append((new_x, new_y))
+            else:
+                left_piece = self.board.piece_grid[new_x][new_y]
+                if left_piece is not None and left_piece.colour != self.colour:
+                    self.valid_moves.append((new_x, new_y))
         except ValueError:
             pass
 
@@ -209,8 +226,7 @@ class King(Piece):
         image = image_white if not self.colour else image_black
         self.sprite = PieceSprite(image, *self.pixel_coords)
 
-    def get_valid_moves(self):
-        self.valid_moves.clear()
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
         for delta_x in [-1, 0, 1]:
             try:
                 self.validate_coord(self.x + delta_x)
@@ -226,10 +242,13 @@ class King(Piece):
                     continue
 
                 new_x, new_y = self.x + delta_x, self.y + delta_y
-                new_space = self.board.piece_grid[new_x][new_y]
-                if new_space is None or new_space.colour != self.colour:
-                    if not self.board.is_attacked(new_x, new_y, not self.colour):
-                        self.valid_moves.append((new_x, new_y))
+                if protected_squares_flag:
+                    self.protected_squares.append((new_x, new_y))
+                else:
+                    new_space = self.board.piece_grid[new_x][new_y]
+                    if new_space is None or new_space.colour != self.colour:
+                        if not self.board.is_attacked(new_x, new_y, not self.colour):
+                            self.valid_moves.append((new_x, new_y))
 
 
 class Knight(Piece):
@@ -241,27 +260,46 @@ class Knight(Piece):
         image = image_white if not self.colour else image_black
         self.sprite = PieceSprite(image, *self.pixel_coords)
 
-    def get_valid_moves(self):
+    def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.valid_moves.clear()
         for delta_x in [-2, 2]:
+            new_x = self.x + delta_x
             try:
-                self.validate_coord(self.x + delta_x)
+                self.validate_coord(new_x)
             except ValueError:
                 continue
 
             for delta_y in [-1, 1]:
+                new_y = self.y + delta_y
                 try:
-                    self.validate_coord(self.y + delta_y)
+                    self.validate_coord(new_y)
                 except ValueError:
                     continue
 
-                new_x, new_y = self.x + delta_x, self.y + delta_y
-                new_space = self.board.piece_grid[new_x][new_y]
-                if new_space is None or new_space.colour != self.colour:
-                    self.valid_moves.append((new_x, new_y))
+                if protected_squares_flag:
+                    self.protected_squares.append((new_x, new_y))
+                else:
+                    new_space = self.board.piece_grid[new_x][new_y]
+                    if new_space is None or new_space.colour != self.colour:
+                        self.valid_moves.append((new_x, new_y))
+        for delta_y in [-2, 2]:
+            new_y = self.y + delta_y
+            try:
+                self.validate_coord(new_y)
+            except ValueError:
+                continue
 
-                # Horse can also move 2 in y-direction followed by 1 in x-direction.
-                # Same as above, but with x and y switched.
-                new_space = self.board.piece_grid[new_y][new_x]
-                if new_space is None or new_space.colour != self.colour:
-                    self.valid_moves.append((new_y, new_x))
+            for delta_x in [-1, 1]:
+                new_x = self.x + delta_x
+                try:
+                    self.validate_coord(new_x)
+                except ValueError:
+                    continue
+
+                if protected_squares_flag:
+                    self.protected_squares.append((new_x, new_y))
+                else:
+                    new_space = self.board.piece_grid[new_x][new_y]
+                    if new_space is None or new_space.colour != self.colour:
+                        self.valid_moves.append((new_x, new_y))
+

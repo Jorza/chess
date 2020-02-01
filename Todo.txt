@@ -1,7 +1,7 @@
-1. Fix valid moves
-	- for ranged pieces
-	- for knight
-	- for king
+1. When a ranged piece attacks the king, allow it to attack all squares behind the king as well.
+2. Add check detection, forced moving.
+3. Add checkmate detection
 
 200. Add pawn promotions
-201. Add check detection
+202. Add en passant pawn capturing
+203. Add stalemate detection - no moves left, >50 boring moves, position repetition.

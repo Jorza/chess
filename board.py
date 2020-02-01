@@ -77,6 +77,7 @@ class Board:
         piece.y = y
         piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
         piece.valid_moves.clear()
+        piece.protected_squares.clear()
 
     def capture(self, piece):
         self.pieces[piece.colour][piece.id] = None
@@ -92,7 +93,7 @@ class Board:
     def is_attacked(self, x, y, colour):
         for piece in self.pieces[colour]:
             if piece:
-                piece.get_valid_moves()
-                if (x, y) in piece.valid_moves:
+                piece.get_protected_squares()
+                if (x, y) in piece.protected_squares:
                     return piece
         return False
