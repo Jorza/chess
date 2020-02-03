@@ -81,21 +81,28 @@ class RangedPiece(Piece):
         try:
             # Get next space on path
             x_probe, y_probe = update_func(self.x, self.y)
-            # Continue probing along path while spaces are empty
-            while self.board.piece_grid[x_probe][y_probe] is None:
+            probe_piece = self.board.piece_grid[x_probe][y_probe]
+            # Probe as long as the path is not blocked.
+            # Also probe if the path is blocked by the opponent's King. This allows ranged pieces to protect squares
+            # beyond the King, and prevents the King from being able to stay in check if it moves.
+            while probe_piece is None or (isinstance(probe_piece, King) and probe_piece.colour != self.colour):
                 if protected_squares_flag:
                     self.protected_squares.append((x_probe, y_probe))
-                else:
-                    self.valid_moves.append((x_probe, y_probe))
+                if not protected_squares_flag:
+                    if probe_piece is None:
+                        self.valid_moves.append((x_probe, y_probe))
+                    else:
+                        break  # If looking for valid moves, any piece blocks the path - including the opponent's King.
                 x_probe, y_probe = update_func(x_probe, y_probe)
+                probe_piece = self.board.piece_grid[x_probe][y_probe]
         except ValueError:
             # Reached edge of board
             return
-        # Current probed space is occupied
+        # Current probed space is occupied. Space is protected, may be able to move to the space by capturing.
         if protected_squares_flag:
             self.protected_squares.append((x_probe, y_probe))
         else:
-            if self.board.piece_grid[x_probe][y_probe].colour != self.colour:
+            if probe_piece.colour != self.colour:
                 self.valid_moves.append((x_probe, y_probe))
 
     def update_higher_x(self, x, y):
@@ -163,7 +170,6 @@ class Queen(RangedPiece):
 class Pawn(Piece):
     def __init__(self, colour, x, y, board, piece_id):
         super().__init__(colour, x, y, board, piece_id, "pawn")
-
         self.step = 1 if self.colour else -1
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):

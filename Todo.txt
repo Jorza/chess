@@ -1,6 +1,5 @@
-1. When a ranged piece attacks the king, allow it to attack all squares behind the king as well.
-2. Add check detection, forced moving.
-3. Add checkmate detection
+1. Add check detection, forced moving.
+2. Add checkmate detection
 
 200. Add pawn promotions
 202. Add en passant pawn capturing
