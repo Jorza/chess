@@ -21,7 +21,7 @@ class PieceSprite(pygame.sprite.Sprite):
 
 
 class Piece:
-    def __init__(self, colour, x, y, board, piece_id):
+    def __init__(self, colour, x, y, board, piece_id, sprite_stem):
         self.colour = self.validate_colour(colour)  # 0 => white, 1 => black
         self.board = board
         self.id = piece_id
@@ -32,7 +32,11 @@ class Piece:
 
         self.valid_moves = []
         self.protected_squares = []
-        self.sprite = None
+
+        colour_string = "b" if self.colour else "w"
+        image_file = "assets/" + colour_string + "_" + sprite_stem + "_svg_NoShadow-svg.png"
+        image = pygame.image.load(image_file).convert_alpha()
+        self.sprite = PieceSprite(image, *self.pixel_coords)
 
     @staticmethod
     def validate_coord(coord):
@@ -59,16 +63,19 @@ class Piece:
         self.get_moves_get_protected_squares()
 
     def get_protected_squares(self):
+        # This is distinct from valid moves - a piece can not move to a piece of the same colour, but does protect it.
+        # Necessary for detecting where the Kings can move so they don't move into check.
         self.protected_squares.clear()
         self.get_moves_get_protected_squares(protected_squares_flag=True)
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
+        # Inherit and overwrite this method.
         pass
 
 
 class RangedPiece(Piece):
-    def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
+    def __init__(self, colour, x, y, board, piece_id, sprite_stem):
+        super().__init__(colour, x, y, board, piece_id, sprite_stem)
 
     def probe_path(self, update_func, protected_squares_flag=False):
         try:
@@ -118,12 +125,7 @@ class RangedPiece(Piece):
 
 class Rook(RangedPiece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
-
-        image_white = pygame.image.load("assets/w_rook_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_rook_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        super().__init__(colour, x, y, board, piece_id, "rook")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.probe_path(self.update_higher_x, protected_squares_flag)
@@ -134,12 +136,7 @@ class Rook(RangedPiece):
 
 class Bishop(RangedPiece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
-
-        image_white = pygame.image.load("assets/w_bishop_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_bishop_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        super().__init__(colour, x, y, board, piece_id, "bishop")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.probe_path(self.update_higher_x_higher_y, protected_squares_flag)
@@ -150,12 +147,7 @@ class Bishop(RangedPiece):
 
 class Queen(RangedPiece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
-
-        image_white = pygame.image.load("assets/w_queen_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_queen_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        super().__init__(colour, x, y, board, piece_id, "queen")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.probe_path(self.update_higher_x, protected_squares_flag)
@@ -170,12 +162,8 @@ class Queen(RangedPiece):
 
 class Pawn(Piece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
+        super().__init__(colour, x, y, board, piece_id, "pawn")
 
-        image_white = pygame.image.load("assets/w_pawn_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_pawn_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
         self.step = 1 if self.colour else -1
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
@@ -213,18 +201,13 @@ class Pawn(Piece):
 
 class EnPassantPawn(Piece):
     def __init__(self, colour, x, y, board, piece_id, pawn_ref):
-        super().__init__(colour, x, y, board, piece_id)
+        super().__init__(colour, x, y, board, piece_id, "pawn")
         self.pawn = pawn_ref
 
 
 class King(Piece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
-
-        image_white = pygame.image.load("assets/w_king_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_king_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        super().__init__(colour, x, y, board, piece_id, "king")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         for delta_x in [-1, 0, 1]:
@@ -253,12 +236,7 @@ class King(Piece):
 
 class Knight(Piece):
     def __init__(self, colour, x, y, board, piece_id):
-        super().__init__(colour, x, y, board, piece_id)
-
-        image_white = pygame.image.load("assets/w_knight_svg_NoShadow-svg.png").convert_alpha()
-        image_black = pygame.image.load("assets/b_knight_svg_NoShadow-svg.png").convert_alpha()
-        image = image_white if not self.colour else image_black
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        super().__init__(colour, x, y, board, piece_id, "knight")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.valid_moves.clear()
