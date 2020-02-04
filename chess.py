@@ -23,14 +23,16 @@ class Chess:
                 if event.button == pygame.BUTTON_LEFT:
                     try:
                         x, y = self.board.get_board_coords(*event.pos)
+                    except ValueError:
+                        # Clicked outside of board. Do nothing.
+                        pass
+                    else:
                         piece = self.board.piece_grid[x][y]
                         if piece and piece.colour == self.active_colour:
                             self.held_piece = piece
                             piece.sprite.kill()  # Remove sprite from groups so is not drawn with other pieces
                             piece.get_valid_moves()
-                    except ValueError:
-                        # Clicked outside of board. Do nothing.
-                        pass
+
             # Placing a held piece on the board
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT and self.held_piece:
@@ -40,14 +42,12 @@ class Chess:
                         # Released outside of board. Drop the piece back to current position
                         pass
                     else:
-                        if (x, y) in self.held_piece.valid_moves:
-                            captured_piece = self.board.piece_grid[x][y]
-                            if captured_piece:
-                                self.board.capture(captured_piece)
-                            self.board.move(self.held_piece, x, y)
+                        success = self.board.move(self.held_piece, x, y)
+                        if success:
                             self.active_colour = not self.active_colour  # Switch players after a move
                     sprite_group = self.board.piece_sprites[self.held_piece.colour]
                     self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
+                    self.held_piece.valid_moves.clear()
                     self.held_piece = None  # Drop piece
 
     def draw_frame(self, screen):

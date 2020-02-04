@@ -67,33 +67,29 @@ class Board:
                 self.piece_grid[file][back_rank] = piece
                 self.piece_sprites[colour].add(piece.sprite)
 
-    def move(self, piece, x, y):
-        pieces.Piece.validate_coord(x)
-        pieces.Piece.validate_coord(y)
-
-        self.piece_grid[piece.x][piece.y] = None
-        self.piece_grid[x][y] = piece
-        piece.x = x
-        piece.y = y
-        piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
-        piece.valid_moves.clear()
-        piece.protected_squares.clear()
-
     def capture(self, piece):
         self.pieces[piece.colour][piece.id] = None
         self.piece_grid[piece.x][piece.y] = None
         piece.sprite.kill()
+
+    def move(self, piece, x, y):
+        pieces.Piece.validate_coord(x)
+        pieces.Piece.validate_coord(y)
+        if (x, y) not in piece.get_valid_moves():
+            return False
+
+        captured_piece = self.piece_grid[x][y]
+        if captured_piece:
+            self.capture(captured_piece)
+
+        self.piece_grid[piece.x][piece.y] = None
+        self.piece_grid[x][y] = piece
+        piece.x, piece.y = x, y
+        piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
+        return True
 
     def draw_board(self, surface):
         surface.blit(self.tiles, (self.x_offset, self.y_offset))
         surface.blit(self.labels_white, (self.x_offset, self.y_offset))
         self.piece_sprites[0].draw(surface)
         self.piece_sprites[1].draw(surface)
-
-    def is_attacked(self, x, y, colour):
-        for piece in self.pieces[colour]:
-            if piece:
-                piece.get_protected_squares()
-                if (x, y) in piece.protected_squares:
-                    return piece
-        return False

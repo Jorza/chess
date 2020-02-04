@@ -53,6 +53,10 @@ class Piece:
         return colour
 
     @property
+    def board_coords(self):
+        return self.x, self.y
+
+    @property
     def pixel_coords(self):
         # Pixel coordinates relative to top-left corner of the display window.
         # Used for drawing sprites to the screen.
@@ -61,12 +65,14 @@ class Piece:
     def get_valid_moves(self):
         self.valid_moves.clear()
         self.get_moves_get_protected_squares()
+        return self.valid_moves
 
     def get_protected_squares(self):
         # This is distinct from valid moves - a piece can not move to a piece of the same colour, but does protect it.
         # Necessary for detecting where the Kings can move so they don't move into check.
         self.protected_squares.clear()
         self.get_moves_get_protected_squares(protected_squares_flag=True)
+        return self.protected_squares
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         # Inherit and overwrite this method.
@@ -216,6 +222,12 @@ class King(Piece):
         super().__init__(colour, x, y, board, piece_id, "king")
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
+        if not protected_squares_flag:
+            # If calculating valid_moves, find protected squares for all pieces of other colour ahead of time.
+            for piece in self.board.pieces[not self.colour]:
+                if piece:
+                    piece.get_protected_squares()
+
         for delta_x in [-1, 0, 1]:
             try:
                 self.validate_coord(self.x + delta_x)
@@ -236,8 +248,17 @@ class King(Piece):
                 else:
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
-                        if not self.board.is_attacked(new_x, new_y, not self.colour):
+                        if not (new_x, new_y) in new_space.protected_squares:
                             self.valid_moves.append((new_x, new_y))
+
+    def is_checked(self):
+        for piece in self.board.pieces[not self.colour]:
+            if piece:
+                if self.board_coords in piece.get_protected_squares():
+                    if self.get_valid_moves():
+                        return True
+                    raise Exception("Checkmate!")
+        return False
 
 
 class Knight(Piece):
