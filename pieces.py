@@ -66,39 +66,13 @@ class Piece:
         # Used for drawing sprites to the screen.
         return self.board.get_pixel_coords(self.x, self.y)
 
-    def is_pinned(self):
-        king = self.board.pieces[self.colour][12]
-        opponent_pieces = self.board.pieces[not self.colour]
-        opponent_ranged_pieces = (opponent_pieces[i] for i in (8, 10, 11, 13, 15) if opponent_pieces[i] is not None)
-
-        # Check all opponent pieces that can pin
-        for piece in opponent_ranged_pieces:
-            # Check current piece is in between opponent piece and king
-            if (piece.x <= self.x <= king.x or piece.x >= self.x >= king.x) and \
-                    (piece.y <= self.y <= king.y or piece.y >= self.y >= king.y):
-                # Once we know the above is satisfied, checking that the pieces are collinear is much easier.
-
-                # Check pieces are collinear along a horizontal or vertical line
-                rook_pin = piece.x == self.x == king.x or piece.y == self.y == king.y
-                # Check pieces are collinear along a line of gradient 1 or -1.
-                bishop_pin = abs(piece.x - self.x) == abs(piece.y - self.y) and \
-                    abs(king.x - self.x) == abs(king.y - self.y)
-
-                if (piece.id == 8 or piece.id == 15) and rook_pin or \
-                        (piece.id == 10 or piece.id == 13) and bishop_pin or \
-                        piece.id == 11 and (bishop_pin or rook_pin):
-                    return True
-        return False
-
     def get_valid_moves(self):
         self.valid_moves.clear()
-        # Check if piece is pinned. If so, it cannot be moved. Leave the list of valid moves empty
-        if not self.is_pinned():
-            self.get_moves_get_protected_squares()
+        self.get_moves_get_protected_squares()
         return self.valid_moves
 
     def get_protected_squares(self):
-        # This is distinct from valid moves - a piece can not move to a piece of the same colour, but does protect it.
+        # This is distinct from valid moves - eg: a piece can't move to a piece of the same colour, but does protect it.
         # Necessary for detecting where the Kings can move so they don't move into check.
         self.protected_squares.clear()
         self.get_moves_get_protected_squares(protected_squares_flag=True)
