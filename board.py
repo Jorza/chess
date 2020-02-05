@@ -12,9 +12,8 @@ class Board:
         self.labels_white = pygame.image.load("assets/board-white-labels.png").convert_alpha()
         self.labels_black = pygame.image.load("assets/board-black-labels.png").convert_alpha()
 
-        self.tile_overlay = pygame.Surface((65, 65))
-        self.tile_overlay.fill((0, 204, 0))
-        self.tile_overlay.set_alpha(80)
+        self.moves_overlay = self.get_surface(self.tile_size, self.tile_size, (0, 204, 0), 80)
+        self.check_overlay = self.get_surface(self.tile_size, self.tile_size, (204, 204, 0), 80)
 
         self.piece_grid = self.get_grid(8, 8)
         # Bitlists for pieces active in the game (not captured).
@@ -35,6 +34,13 @@ class Board:
         for i in range(m):
             grid.append([None] * n)
         return grid
+
+    @staticmethod
+    def get_surface(width, height, colour, alpha):
+        surface = pygame.Surface((width, height))
+        surface.fill(colour)
+        surface.set_alpha(alpha)
+        return surface
 
     def get_board_coords(self, x, y):
         x, y = (x - self.x_offset) // self.tile_size, (y - self.y_offset) // self.tile_size
@@ -62,8 +68,8 @@ class Board:
                 self.piece_grid[file][pawn_rank] = pawn
                 self.piece_sprites[colour].add(pawn.sprite)
                 # Back row pieces
-                piece = piece_classes[file](colour, file, back_rank, self, file + 7)
-                self.pieces[colour][file + 7] = piece
+                piece = piece_classes[file](colour, file, back_rank, self, file + 8)
+                self.pieces[colour][file + 8] = piece
                 self.piece_grid[file][back_rank] = piece
                 self.piece_sprites[colour].add(piece.sprite)
 
@@ -87,6 +93,10 @@ class Board:
         piece.x, piece.y = x, y
         piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
         return True
+
+    def get_check(self, colour):
+        king = self.pieces[colour][12]
+        return king.is_checked()
 
     def draw_board(self, surface):
         surface.blit(self.tiles, (self.x_offset, self.y_offset))

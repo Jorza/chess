@@ -13,6 +13,7 @@ class Chess:
         self.board = Board()
         self.active_colour = 0  # 0 => white, 1 => black
         self.held_piece = None
+        self.check_flag = False
 
     def process_events(self):
         for event in pygame.event.get():
@@ -28,7 +29,7 @@ class Chess:
                         pass
                     else:
                         piece = self.board.piece_grid[x][y]
-                        if piece and piece.colour == self.active_colour:
+                        if piece and piece.colour == self.active_colour:  # Player can only move their own pieces
                             self.held_piece = piece
                             piece.sprite.kill()  # Remove sprite from groups so is not drawn with other pieces
                             piece.get_valid_moves()
@@ -45,6 +46,7 @@ class Chess:
                         success = self.board.move(self.held_piece, x, y)
                         if success:
                             self.active_colour = not self.active_colour  # Switch players after a move
+                            self.check_flag = self.board.get_check(self.active_colour)
                     sprite_group = self.board.piece_sprites[self.held_piece.colour]
                     self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
                     self.held_piece.valid_moves.clear()
@@ -56,9 +58,9 @@ class Chess:
         if self.held_piece:
             for (x, y) in self.held_piece.valid_moves:
                 pos = self.board.get_pixel_coords(x, y)
-                screen.blit(self.board.tile_overlay, pos)
-            screen.blit(self.board.tile_overlay, self.held_piece.sprite.rect)
-            screen.blit(self.board.tile_overlay, self.held_piece.sprite.rect)
+                screen.blit(self.board.moves_overlay, pos)
+            screen.blit(self.board.moves_overlay, self.held_piece.sprite.rect)
+            screen.blit(self.board.moves_overlay, self.held_piece.sprite.rect)
 
             tile_size = self.board.tile_size
             pos = pygame.mouse.get_pos()

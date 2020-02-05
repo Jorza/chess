@@ -5,7 +5,7 @@
 # King
 # Knight
 
-# Rule - pieces cannot touch other pieces. They can check the board, but not modify anything on it
+# Rule - pieces cannot touch other pieces. They can check the board, but not modify anything else on it
 #      - pieces do not implement how they capture other pieces
 
 import pygame
@@ -24,6 +24,10 @@ class Piece:
     def __init__(self, colour, x, y, board, piece_id, sprite_stem):
         self.colour = self.validate_colour(colour)  # 0 => white, 1 => black
         self.board = board
+        # Each piece of a colour has a unique ID determined by its starting rank and file.
+        # Pawns have IDs 0 through 7 for files 1 through 8 respectively.
+        # Back row pieces have IDs 8 through 15 for files 1 through 8 respectively.
+        # eg: Both Kings have an ID of 12.
         self.id = piece_id
 
         # Grid coordinates of the piece on the board. Integers 0 to 7 only
@@ -53,7 +57,7 @@ class Piece:
         return colour
 
     @property
-    def board_coords(self):
+    def coords(self):
         return self.x, self.y
 
     @property
@@ -62,9 +66,35 @@ class Piece:
         # Used for drawing sprites to the screen.
         return self.board.get_pixel_coords(self.x, self.y)
 
+    def is_pinned(self):
+        king = self.board.pieces[self.colour][12]
+        opponent_pieces = self.board.pieces[not self.colour]
+        opponent_ranged_pieces = (opponent_pieces[i] for i in (8, 10, 11, 13, 15) if opponent_pieces[i] is not None)
+
+        # Check all opponent pieces that can pin
+        for piece in opponent_ranged_pieces:
+            # Check current piece is in between opponent piece and king
+            if (piece.x <= self.x <= king.x or piece.x >= self.x >= king.x) and \
+                    (piece.y <= self.y <= king.y or piece.y >= self.y >= king.y):
+                # Once we know the above is satisfied, checking that the pieces are collinear is much easier.
+
+                # Check pieces are collinear along a horizontal or vertical line
+                rook_pin = piece.x == self.x == king.x or piece.y == self.y == king.y
+                # Check pieces are collinear along a line of gradient 1 or -1.
+                bishop_pin = abs(piece.x - self.x) == abs(piece.y - self.y) and \
+                    abs(king.x - self.x) == abs(king.y - self.y)
+
+                if (piece.id == 8 or piece.id == 15) and rook_pin or \
+                        (piece.id == 10 or piece.id == 13) and bishop_pin or \
+                        piece.id == 11 and (bishop_pin or rook_pin):
+                    return True
+        return False
+
     def get_valid_moves(self):
         self.valid_moves.clear()
-        self.get_moves_get_protected_squares()
+        # Check if piece is pinned. If so, it cannot be moved. Leave the list of valid moves empty
+        if not self.is_pinned():
+            self.get_moves_get_protected_squares()
         return self.valid_moves
 
     def get_protected_squares(self):
@@ -224,9 +254,10 @@ class King(Piece):
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         if not protected_squares_flag:
             # If calculating valid_moves, find protected squares for all pieces of other colour ahead of time.
+            current_protected_squares = []
             for piece in self.board.pieces[not self.colour]:
                 if piece:
-                    piece.get_protected_squares()
+                    current_protected_squares += piece.get_protected_squares()
 
         for delta_x in [-1, 0, 1]:
             try:
@@ -248,16 +279,14 @@ class King(Piece):
                 else:
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
-                        if not (new_x, new_y) in new_space.protected_squares:
+                        if not (new_x, new_y) in current_protected_squares:
                             self.valid_moves.append((new_x, new_y))
 
     def is_checked(self):
         for piece in self.board.pieces[not self.colour]:
             if piece:
-                if self.board_coords in piece.get_protected_squares():
-                    if self.get_valid_moves():
-                        return True
-                    raise Exception("Checkmate!")
+                if self.coords in piece.get_protected_squares():
+                    return True
         return False
 
 

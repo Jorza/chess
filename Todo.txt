@@ -1,4 +1,5 @@
 1. Add check detection, forced moving.
+	- Fix valid moves so pieces can only move if king is not in check at the end of the turn
 2. Add checkmate detection
 
 200. Add pawn promotions
