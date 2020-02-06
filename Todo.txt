@@ -1,7 +1,15 @@
 1. Add check detection, forced moving.
 	- Fix valid moves so pieces can only move if king is not in check at the end of the turn
-	- Will handle pins, blocking check, capturing checking piece
-2. Add checkmate detection
+	- Will handle king pins, blocking check, capturing checking piece
+	- Can later make it so that it only checks whether the king is in check after a move if the moving piece is pinned or the king is already in check.
+		Other moves can not result in the king being left in check.
+	- Can later make it so that a pinned piece will not look for moves along paths that are guaranteed to leave the king in check.
+		On each path, probe only one space. If it leaves the King in check, do not explore the path further.
+		Only applies for pinned pieces.
+2. Add checkmate detection, stalemate (no moves left) detection
+	- Go through each piece in turn. If none have any valid moves, see whether the King is in check.
+		If so, checkmate. If not, stalemate.
+	- Precondition - a piece's valid moves can not include any move that leaves the King in check, but must allow moves that capture the checking piece or block the check.
 
 200. Add pawn promotions
 202. Add en passant pawn capturing
