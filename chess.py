@@ -15,6 +15,35 @@ class Chess:
         self.held_piece = None
         self.check_flag = False
 
+    def pick_up_piece(self, x, y):
+        try:
+            x, y = self.board.get_board_coords(x, y)
+        except ValueError:
+            # Clicked outside of board. Do nothing.
+            pass
+        else:
+            piece = self.board.piece_grid[x][y]
+            if piece and piece.colour == self.active_colour:  # Player can only move their own pieces
+                self.held_piece = piece
+                piece.sprite.kill()  # Remove sprite from groups so is not drawn with other pieces
+                piece.get_valid_moves()
+
+    def release_piece(self, x, y):
+        try:
+            x, y = self.board.get_board_coords(x, y)
+        except ValueError:
+            # Released outside of board. Drop the piece back to current position
+            pass
+        else:
+            if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
+                if self.board.move(self.held_piece, x, y):
+                    self.active_colour = not self.active_colour  # Switch players after a move
+                    self.check_flag = self.board.is_check(self.active_colour)
+        sprite_group = self.board.piece_sprites[self.held_piece.colour]
+        self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
+        self.held_piece.valid_moves.clear()
+        self.held_piece = None  # Drop piece
+
     def process_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -22,39 +51,15 @@ class Chess:
             # Picking up a piece on the board
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
-                    try:
-                        x, y = self.board.get_board_coords(*event.pos)
-                    except ValueError:
-                        # Clicked outside of board. Do nothing.
-                        pass
-                    else:
-                        piece = self.board.piece_grid[x][y]
-                        if piece and piece.colour == self.active_colour:  # Player can only move their own pieces
-                            self.held_piece = piece
-                            piece.sprite.kill()  # Remove sprite from groups so is not drawn with other pieces
-                            piece.get_valid_moves()
+                    self.pick_up_piece(*event.pos)
 
             # Placing a held piece on the board
             elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == pygame.BUTTON_LEFT and self.held_piece:
-                    try:
-                        x, y = self.board.get_board_coords(*event.pos)
-                    except ValueError:
-                        # Released outside of board. Drop the piece back to current position
-                        pass
-                    else:
-                        if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
-                            if self.board.move(self.held_piece, x, y):
-                                self.active_colour = not self.active_colour  # Switch players after a move
-                                self.check_flag = self.board.is_check(self.active_colour)
-                    sprite_group = self.board.piece_sprites[self.held_piece.colour]
-                    self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
-                    self.held_piece.valid_moves.clear()
-                    self.held_piece = None  # Drop piece
+                if event.button == pygame.BUTTON_LEFT:
+                    if self.held_piece:
+                        self.release_piece(*event.pos)
 
-    def draw_frame(self, screen):
-        # Background
-        screen.fill(BLACK)
+    def draw_game(self, screen):
         self.board.draw_board(screen)
         # Tile overlays
         if self.held_piece:
@@ -73,6 +78,11 @@ class Chess:
             pos = pygame.mouse.get_pos()
             pos = pos[0] - tile_size // 2, pos[1] - tile_size // 2
             screen.blit(self.held_piece.sprite.image, pos)
+
+    def draw_frame(self, screen):
+        # Background
+        screen.fill(BLACK)
+        self.draw_game(screen)
 
 
 def play_chess():
