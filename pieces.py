@@ -66,6 +66,11 @@ class Piece:
         # Used for drawing sprites to the screen.
         return self.board.get_pixel_coords(self.x, self.y)
 
+    def add_valid_move(self, x, y):
+        check_after_move = self.board.is_check_after_move(self, x, y)
+        if not check_after_move:
+            self.valid_moves.append((x, y))
+
     def get_valid_moves(self):
         self.valid_moves.clear()
         self.get_moves_get_protected_squares()
@@ -100,7 +105,7 @@ class RangedPiece(Piece):
                     self.protected_squares.append((x_probe, y_probe))
                 if not protected_squares_flag:
                     if probe_piece is None:
-                        self.valid_moves.append((x_probe, y_probe))
+                        self.add_valid_move(x_probe, y_probe)
                     else:
                         break  # If looking for valid moves, any piece blocks the path - including the opponent's King.
                 x_probe, y_probe = update_func(x_probe, y_probe)
@@ -113,7 +118,7 @@ class RangedPiece(Piece):
             self.protected_squares.append((x_probe, y_probe))
         else:
             if probe_piece.colour != self.colour:
-                self.valid_moves.append((x_probe, y_probe))
+                self.add_valid_move(x_probe, y_probe)
 
     def update_higher_x(self, x, y):
         return self.validate_coord(x + 1), y
@@ -184,11 +189,12 @@ class Pawn(Piece):
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         # Straight movement
-        if self.board.piece_grid[self.x][self.y + self.step] is None:
-            self.valid_moves.append((self.x, self.y + self.step))
-            # Double-move if on starting rank
-            if (self.y - self.step) % 7 == 0 and self.board.piece_grid[self.x][self.y + 2*self.step] is None:
-                self.valid_moves.append((self.x, self.y + 2*self.step))
+        if not protected_squares_flag:  # Only applies when looking for valid moves.
+            if self.board.piece_grid[self.x][self.y + self.step] is None:
+                self.add_valid_move(self.x, self.y + self.step)
+                # Double-move if on starting rank
+                if (self.y - self.step) % 7 == 0 and self.board.piece_grid[self.x][self.y + 2*self.step] is None:
+                    self.add_valid_move(self.x, self.y + 2*self.step)
 
         # Capture right
         try:
@@ -198,7 +204,7 @@ class Pawn(Piece):
             else:
                 right_piece = self.board.piece_grid[new_x][new_y]
                 if right_piece is not None and right_piece.colour != self.colour:
-                    self.valid_moves.append((new_x, new_y))
+                    self.add_valid_move(new_x, new_y)
         except ValueError:
             pass
 
@@ -210,7 +216,7 @@ class Pawn(Piece):
             else:
                 left_piece = self.board.piece_grid[new_x][new_y]
                 if left_piece is not None and left_piece.colour != self.colour:
-                    self.valid_moves.append((new_x, new_y))
+                    self.add_valid_move(new_x, new_y)
         except ValueError:
             pass
 
@@ -254,7 +260,7 @@ class King(Piece):
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
                         if not (new_x, new_y) in current_protected_squares:
-                            self.valid_moves.append((new_x, new_y))
+                            self.add_valid_move(new_x, new_y)
 
     def is_checked(self):
         for piece in self.board.pieces[not self.colour]:
@@ -289,7 +295,7 @@ class Knight(Piece):
                 else:
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
-                        self.valid_moves.append((new_x, new_y))
+                        self.add_valid_move(new_x, new_y)
         for delta_y in [-2, 2]:
             new_y = self.y + delta_y
             try:
@@ -309,5 +315,5 @@ class Knight(Piece):
                 else:
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
-                        self.valid_moves.append((new_x, new_y))
+                        self.add_valid_move(new_x, new_y)
 

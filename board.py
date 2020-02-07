@@ -94,12 +94,40 @@ class Board:
         piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
         return True
 
-    def get_check(self, colour):
+    def is_check(self, colour):
         king = self.pieces[colour][12]
         return king.is_checked()
+
+    def is_check_after_move(self, piece, x, y):
+        pieces.Piece.validate_coord(x)
+        pieces.Piece.validate_coord(y)
+
+        # Move piece on board, but so that it isn't visible to player
+        captured_piece = self.piece_grid[x][y]
+        if captured_piece:
+            self.pieces[captured_piece.colour][captured_piece.id] = None
+            self.piece_grid[captured_piece.x][captured_piece.y] = None
+        self.piece_grid[piece.x][piece.y] = None
+        self.piece_grid[x][y] = piece
+        old_coords = piece.coords
+        piece.x, piece.y = x, y
+
+        # Would the move result in a check?
+        check = self.is_check(piece.colour)
+
+        # Move everything back
+        piece.x, piece.y = old_coords
+        self.piece_grid[piece.x][piece.y] = piece
+        self.piece_grid[x][y] = None
+        if captured_piece:
+            self.pieces[captured_piece.colour][captured_piece.id] = captured_piece
+            self.piece_grid[captured_piece.x][captured_piece.y] = captured_piece
+        return check
 
     def draw_board(self, surface):
         surface.blit(self.tiles, (self.x_offset, self.y_offset))
         surface.blit(self.labels_white, (self.x_offset, self.y_offset))
+
+    def draw_pieces(self, surface):
         self.piece_sprites[0].draw(surface)
         self.piece_sprites[1].draw(surface)
