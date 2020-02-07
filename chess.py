@@ -43,25 +43,32 @@ class Chess:
                         # Released outside of board. Drop the piece back to current position
                         pass
                     else:
-                        success = self.board.move(self.held_piece, x, y)
-                        if success:
-                            self.active_colour = not self.active_colour  # Switch players after a move
-                            self.check_flag = self.board.get_check(self.active_colour)
+                        if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
+                            if self.board.move(self.held_piece, x, y):
+                                self.active_colour = not self.active_colour  # Switch players after a move
+                                self.check_flag = self.board.is_check(self.active_colour)
                     sprite_group = self.board.piece_sprites[self.held_piece.colour]
                     self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
                     self.held_piece.valid_moves.clear()
                     self.held_piece = None  # Drop piece
 
     def draw_frame(self, screen):
+        # Background
         screen.fill(BLACK)
         self.board.draw_board(screen)
+        # Tile overlays
         if self.held_piece:
             for (x, y) in self.held_piece.valid_moves:
                 pos = self.board.get_pixel_coords(x, y)
                 screen.blit(self.board.moves_overlay, pos)
             screen.blit(self.board.moves_overlay, self.held_piece.sprite.rect)
             screen.blit(self.board.moves_overlay, self.held_piece.sprite.rect)
-
+        if self.check_flag:
+            active_king = self.board.pieces[self.active_colour][12]
+            screen.blit(self.board.check_overlay, active_king.sprite.rect)
+        # Pieces
+        self.board.draw_pieces(screen)
+        if self.held_piece:
             tile_size = self.board.tile_size
             pos = pygame.mouse.get_pos()
             pos = pos[0] - tile_size // 2, pos[1] - tile_size // 2
