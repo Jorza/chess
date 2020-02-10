@@ -1,4 +1,5 @@
 import pygame
+import exceptions
 import pieces
 
 
@@ -95,8 +96,20 @@ class Board:
         return True
 
     def is_check(self, colour):
+        # This is used internally when checking valid moves so they do not leave the King in check.
         king = self.pieces[colour][12]
         return king.is_checked()
+
+    def is_check_or_checkmate(self, colour):
+        # This may be used when running the game.
+        check = self.is_check(colour)
+        if all(not piece.get_valid_moves() for piece in self.pieces[colour] if piece):
+            # No moves left
+            if check:
+                raise exceptions.CheckmateError(colour)
+            else:
+                raise exceptions.StalemateError(colour, 'no moves')
+        return check
 
     def is_check_after_move(self, piece, x, y):
         pieces.Piece.validate_coord(x)

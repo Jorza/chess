@@ -1,11 +1,8 @@
-1. Add checkmate detection, stalemate (no moves left) detection
-	- Go through each piece in turn. If none have any valid moves, see whether the King is in check.
-		If so, checkmate. If not, stalemate.
-	- Precondition - a piece's valid moves can not include any move that leaves the King in check, but must allow moves that capture the checking piece or block the check.
-2. Add pawn promotions
-3. Add castling
-4. Add en passant pawn capturing
+1. Add pawn promotions
+2. Add castling
+3. Add en passant pawn capturing
 
+202. Add graphic display for end of game.
 203. Add stalemate detection - no moves left, >50 boring moves, position repetition.
 204. Improve check detection - handling king pins, blocking check, capturing checking piece
 	- Currently checks every valid move if the King would be in check after the move.

@@ -1,4 +1,5 @@
 import pygame
+import exceptions
 from board import Board
 
 
@@ -38,7 +39,11 @@ class Chess:
             if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
                 if self.board.move(self.held_piece, x, y):
                     self.active_colour = not self.active_colour  # Switch players after a move
-                    self.check_flag = self.board.is_check(self.active_colour)
+                    try:
+                        self.check_flag = self.board.is_check_or_checkmate(self.active_colour)
+                    except exceptions.GameOverError as e:
+                        print(e.message)
+
         sprite_group = self.board.piece_sprites[self.held_piece.colour]
         self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
         self.held_piece.valid_moves.clear()
