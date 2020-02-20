@@ -1,6 +1,5 @@
-1. Add pawn promotions
-2. Add castling
-3. Add en passant pawn capturing
+1. Add castling
+2. Add en passant pawn capturing
 
 202. Add graphic display for end of game.
 203. Add stalemate detection - no moves left, >50 boring moves, position repetition.

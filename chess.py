@@ -1,6 +1,7 @@
 import pygame
 import exceptions
 from board import Board
+import pieces
 
 
 # Global parameters
@@ -15,6 +16,7 @@ class Chess:
         self.active_colour = 0  # 0 => white, 1 => black
         self.held_piece = None
         self.check_flag = False
+        self.pawn_promotion = None
 
     def pick_up_piece(self, x, y):
         try:
@@ -29,6 +31,13 @@ class Chess:
                 piece.sprite.kill()  # Remove sprite from groups so is not drawn with other pieces
                 piece.get_valid_moves()
 
+    def turnover_move(self):
+        self.active_colour = not self.active_colour  # Switch players
+        try:
+            self.check_flag = self.board.is_check_or_checkmate(self.active_colour)
+        except exceptions.GameOverError as e:
+            print(e.message)
+
     def release_piece(self, x, y):
         try:
             x, y = self.board.get_board_coords(x, y)
@@ -37,30 +46,61 @@ class Chess:
             pass
         else:
             if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
-                if self.board.move(self.held_piece, x, y):
-                    self.active_colour = not self.active_colour  # Switch players after a move
-                    try:
-                        self.check_flag = self.board.is_check_or_checkmate(self.active_colour)
-                    except exceptions.GameOverError as e:
-                        print(e.message)
+                try:
+                    move_success = self.board.move(self.held_piece, x, y)
+                except exceptions.PawnPromotionError as e:
+                    self.pawn_promotion = e
+                    self.held_piece = None
+                    # Must drop the piece here
+                    # Only restore the sprite and clear the valid moves if the promotion is cancelled.
+                    return
+                else:
+                    if move_success:
+                        self.turnover_move()
 
-        sprite_group = self.board.piece_sprites[self.held_piece.colour]
-        self.held_piece.sprite.add(sprite_group)  # Add to group of sprites to draw
+        self.board.add_piece_sprite(self.held_piece)  # Add to group of sprites to draw
         self.held_piece.valid_moves.clear()
         self.held_piece = None  # Drop piece
+
+    def select_promotion(self, x, y):
+        promotion = self.pawn_promotion
+        self.pawn_promotion = None
+        try:
+            x, y = self.board.get_board_coords(x, y)
+            if x != promotion.x or ((y > 3) ^ promotion.pawn.colour):
+                raise ValueError
+        except ValueError:
+            # Clicked outside of promotion selection area. Cancel promotion, restore old pawn.
+            self.board.add_piece_sprite(promotion.pawn)  # Add to group of sprites to draw
+            promotion.pawn.valid_moves.clear()
+            return
+
+        # Selected a piece to promote to.
+        piece_index = y if y < 4 else 7 - y
+        possible_promotions = pieces.Queen, pieces.Rook, pieces.Bishop, pieces.Knight
+        promotion_piece = possible_promotions[piece_index]
+
+        # Promote piece, end move.
+        self.board.promote(promotion, promotion_piece)
+        self.turnover_move()
 
     def process_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-            # Picking up a piece on the board
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
-                    self.pick_up_piece(*event.pos)
+                    # Pawn promotion
+                    if self.pawn_promotion:
+                        self.select_promotion(*event.pos)
+                    # Picking up a piece on the board
+                    else:
+                        self.pick_up_piece(*event.pos)
 
-            # Placing a held piece on the board
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == pygame.BUTTON_LEFT:
+                    # Placing a held piece on the board
                     if self.held_piece:
                         self.release_piece(*event.pos)
 
@@ -83,6 +123,15 @@ class Chess:
             pos = pygame.mouse.get_pos()
             pos = pos[0] - tile_size // 2, pos[1] - tile_size // 2
             screen.blit(self.held_piece.sprite.image, pos)
+        # Pawn promotion overlay
+        if self.pawn_promotion:
+            if self.pawn_promotion.pawn.colour:
+                pos = self.board.get_pixel_coords(self.pawn_promotion.x, 4)
+                image = self.board.pawn_promotions_black
+            else:
+                pos = self.board.get_pixel_coords(self.pawn_promotion.x, 0)
+                image = self.board.pawn_promotions_white
+            screen.blit(image, pos)
 
     def draw_frame(self, screen):
         # Background

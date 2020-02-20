@@ -1,3 +1,21 @@
+class PawnPromotionError(Exception):
+    """
+    Raised when a pawn reaches the back rank.
+
+    Interrupts the current move so that the user can select the promotion they want.
+    """
+    def __init__(self, pawn, x, y):
+        self.pawn = pawn
+        # Store the board coordinates where the pawn is to be promoted.
+        # These are not the pawn's current coordinates.
+        self.x = x
+        self.y = y
+
+    @property
+    def properties(self):
+        return self.pawn, self.x, self.y
+
+
 class GameOverError(Exception):
     """
     Base class for all user-defined exceptions signalling a completed game.

@@ -16,6 +16,9 @@ class Board:
         self.moves_overlay = self.get_surface(self.tile_size, self.tile_size, (0, 204, 0), 80)
         self.check_overlay = self.get_surface(self.tile_size, self.tile_size, (204, 204, 0), 80)
 
+        self.pawn_promotions_white = pygame.image.load("assets/w_pawn_promotions.png").convert_alpha()
+        self.pawn_promotions_black = pygame.image.load("assets/b_pawn_promotions.png").convert_alpha()
+
         self.piece_grid = self.get_grid(8, 8)
         # Bitlists for pieces active in the game (not captured).
         # Each piece has an ID (piece.id) which gives its position in the list. The pawns have IDs 0 - 7 going from file
@@ -53,6 +56,9 @@ class Board:
         # Pixel coordinates relative to top-left corner of the display window.
         return x * self.tile_size + self.x_offset, y * self.tile_size + self.y_offset
 
+    def add_piece_sprite(self, piece):
+        self.piece_sprites[piece.colour].add(piece.sprite)
+
     def set_pieces(self):
         # Create pieces in starting position on the board.
         # Add pieces to bitlists for each colour, add to piece_grid, add sprites to groups.
@@ -67,12 +73,12 @@ class Board:
                 pawn = pieces.Pawn(colour, file, pawn_rank, self, file)
                 self.pieces[colour][file] = pawn
                 self.piece_grid[file][pawn_rank] = pawn
-                self.piece_sprites[colour].add(pawn.sprite)
+                self.add_piece_sprite(pawn)
                 # Back row pieces
                 piece = piece_classes[file](colour, file, back_rank, self, file + 8)
                 self.pieces[colour][file + 8] = piece
                 self.piece_grid[file][back_rank] = piece
-                self.piece_sprites[colour].add(piece.sprite)
+                self.add_piece_sprite(piece)
 
     def capture(self, piece):
         self.pieces[piece.colour][piece.id] = None
@@ -85,6 +91,10 @@ class Board:
         if (x, y) not in piece.get_valid_moves():
             return False
 
+        # If the piece is a pawn and is on the second-back rank (so it will be moved to the back rank and promote).
+        if isinstance(piece, pieces.Pawn) and (piece.y - 6 * piece.step) % 7 == 0:
+            raise exceptions.PawnPromotionError(piece, x, y)
+
         captured_piece = self.piece_grid[x][y]
         if captured_piece:
             self.capture(captured_piece)
@@ -94,6 +104,25 @@ class Board:
         piece.x, piece.y = x, y
         piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
         return True
+
+    def promote(self, pawn_promotion, promotion_piece):
+        pawn, x, y = pawn_promotion.properties
+        possible_promotions = pieces.Queen, pieces.Rook, pieces.Bishop, pieces.Knight
+        assert promotion_piece in possible_promotions
+
+        captured_piece = self.piece_grid[x][y]
+        if captured_piece:
+            self.capture(captured_piece)
+
+        # Remove old pawn
+        self.piece_grid[pawn.x][pawn.y] = None
+        # Don't need to kill sprite, as it was already done when the pawn was picked up
+
+        # Create new piece, replace position of old pawn in self.pieces
+        piece = promotion_piece(pawn.colour, x, y, self, pawn.id)
+        self.pieces[pawn.colour][pawn.id] = piece
+        self.piece_grid[x][y] = piece
+        self.add_piece_sprite(piece)
 
     def is_check(self, colour):
         # This is used internally when checking valid moves so they do not leave the King in check.
