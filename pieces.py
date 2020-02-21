@@ -148,6 +148,7 @@ class RangedPiece(Piece):
 class Rook(RangedPiece):
     def __init__(self, colour, x, y, board, piece_id):
         super().__init__(colour, x, y, board, piece_id, "rook")
+        self.has_moved = False
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         self.probe_path(self.update_higher_x, protected_squares_flag)
@@ -230,15 +231,21 @@ class EnPassantPawn(Piece):
 class King(Piece):
     def __init__(self, colour, x, y, board, piece_id):
         super().__init__(colour, x, y, board, piece_id, "king")
+        self.has_moved = False
+
+    def get_opponent_protected_squares(self):
+        protected_squares = []
+        for piece in self.board.pieces[not self.colour]:
+            if piece:
+                protected_squares += piece.get_protected_squares()
+        return protected_squares
 
     def get_moves_get_protected_squares(self, protected_squares_flag=False):
         if not protected_squares_flag:
             # If calculating valid_moves, find protected squares for all pieces of other colour ahead of time.
-            current_protected_squares = []
-            for piece in self.board.pieces[not self.colour]:
-                if piece:
-                    current_protected_squares += piece.get_protected_squares()
+            opponent_protected_squares = self.get_opponent_protected_squares()
 
+        # Regular moves
         for delta_x in [-1, 0, 1]:
             try:
                 self.validate_coord(self.x + delta_x)
@@ -259,15 +266,36 @@ class King(Piece):
                 else:
                     new_space = self.board.piece_grid[new_x][new_y]
                     if new_space is None or new_space.colour != self.colour:
-                        if not (new_x, new_y) in current_protected_squares:
-                            self.add_valid_move(new_x, new_y)
+                        if not (new_x, new_y) in opponent_protected_squares:
+                            self.valid_moves.append((new_x, new_y))
+
+        # Castling
+        # Conditions for castling:
+        #     1. King must not have moved, King must not be in check
+        #     For each rook:
+        #         1. Rook must not have moved
+        #         2. Squares between King and Rook must be empty
+        #         3. Squares the King moves through (or to) must not be protected
+        if not protected_squares_flag:
+            # Only consider if calculating valid moves. Does not affect protected squares.
+            if not self.has_moved and self.coords not in opponent_protected_squares:
+                grid = self.board.piece_grid
+                rank = 0 if self.colour else 7
+                # King side
+                king_rook = self.board.pieces[self.colour][15]
+                if king_rook and not king_rook.has_moved:
+                    if all(not grid[file][rank] and (file, rank) not in opponent_protected_squares for file in (5, 6)):
+                        self.valid_moves.append((6, rank))
+                # Queen side
+                queen_rook = self.board.pieces[self.colour][8]
+                if queen_rook and not queen_rook.has_moved:
+                    if not grid[1][rank]:
+                        if all(not grid[file][rank] and (file, rank) not in opponent_protected_squares for file in (2, 3)):
+                            self.valid_moves.append((2, rank))
 
     def is_checked(self):
-        for piece in self.board.pieces[not self.colour]:
-            if piece:
-                if self.coords in piece.get_protected_squares():
-                    return True
-        return False
+        protected_squares = self.get_opponent_protected_squares()
+        return self.coords in protected_squares
 
 
 class Knight(Piece):

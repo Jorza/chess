@@ -46,16 +46,16 @@ class Chess:
             pass
         else:
             if self.held_piece.x != x or self.held_piece.y != y:  # Avoid unnecessary work for trivial case
-                try:
-                    move_success = self.board.move(self.held_piece, x, y)
-                except exceptions.PawnPromotionError as e:
-                    self.pawn_promotion = e
-                    self.held_piece = None
-                    # Must drop the piece here
-                    # Only restore the sprite and clear the valid moves if the promotion is cancelled.
-                    return
-                else:
-                    if move_success:
+                if (x, y) in self.held_piece.valid_moves:
+                    try:
+                        self.board.move(self.held_piece, x, y)
+                    except exceptions.PawnPromotionError as e:
+                        self.pawn_promotion = e
+                        self.held_piece = None
+                        # Must drop the piece here
+                        # Only restore the sprite and clear the valid moves if the promotion is cancelled.
+                        return
+                    else:
                         self.turnover_move()
 
         self.board.add_piece_sprite(self.held_piece)  # Add to group of sprites to draw

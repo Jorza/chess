@@ -88,12 +88,23 @@ class Board:
     def move(self, piece, x, y):
         pieces.Piece.validate_coord(x)
         pieces.Piece.validate_coord(y)
-        if (x, y) not in piece.get_valid_moves():
-            return False
 
-        # If the piece is a pawn and is on the second-back rank (so it will be moved to the back rank and promote).
+        # If the piece is a pawn and is on the second-back rank (so it will be moved to the back rank), promote it.
         if isinstance(piece, pieces.Pawn) and (piece.y - 6 * piece.step) % 7 == 0:
             raise exceptions.PawnPromotionError(piece, x, y)
+
+        # If the piece is a Rook, mark it as having moved
+        if isinstance(piece, pieces.Rook) and not piece.has_moved:
+            piece.has_moved = True
+
+        # If the piece is a King, mark it as having moved. Handle castling
+        if isinstance(piece, pieces.King) and not piece.has_moved:
+            piece.has_moved = True
+            if abs(x - piece.x) > 1:
+                rook_initial_file = 0 if x < piece.x else 7
+                rook_final_file = 3 if x < piece.x else 5
+                rook = self.pieces[piece.colour][rook_initial_file + 8]
+                self.move(rook, rook_final_file, y)
 
         captured_piece = self.piece_grid[x][y]
         if captured_piece:
@@ -103,7 +114,6 @@ class Board:
         self.piece_grid[x][y] = piece
         piece.x, piece.y = x, y
         piece.sprite.rect.x, piece.sprite.rect.y = self.get_pixel_coords(x, y)
-        return True
 
     def promote(self, pawn_promotion, promotion_piece):
         pawn, x, y = pawn_promotion.properties
