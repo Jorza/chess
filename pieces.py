@@ -37,10 +37,11 @@ class Piece:
         self.valid_moves = []
         self.protected_squares = []
 
-        colour_string = "b" if self.colour else "w"
-        image_file = "assets/" + colour_string + "_" + sprite_stem + "_svg_NoShadow-svg.png"
-        image = pygame.image.load(image_file).convert_alpha()
-        self.sprite = PieceSprite(image, *self.pixel_coords)
+        if sprite_stem:
+            colour_string = "b" if self.colour else "w"
+            image_file = "assets/" + colour_string + "_" + sprite_stem + "_svg_NoShadow-svg.png"
+            image = pygame.image.load(image_file).convert_alpha()
+            self.sprite = PieceSprite(image, *self.pixel_coords)
 
     @staticmethod
     def validate_coord(coord):
@@ -98,9 +99,10 @@ class RangedPiece(Piece):
             x_probe, y_probe = update_func(self.x, self.y)
             probe_piece = self.board.piece_grid[x_probe][y_probe]
             # Probe as long as the path is not blocked.
-            # Also probe if the path is blocked by the opponent's King. This allows ranged pieces to protect squares
-            # beyond the King, and prevents the King from being able to stay in check if it moves.
-            while probe_piece is None or (isinstance(probe_piece, King) and probe_piece.colour != self.colour):
+            # An EnPassanePawn does not block the path. Neither does the opponent's King. This allows ranged pieces to
+            # protect squares beyond the King, and prevents the King from being able to stay in check if it moves.
+            while probe_piece is None or isinstance(probe_piece, EnPassantPawn) or \
+                    (isinstance(probe_piece, King) and probe_piece.colour != self.colour):
                 if protected_squares_flag:
                     self.protected_squares.append((x_probe, y_probe))
                 if not protected_squares_flag:
@@ -223,9 +225,9 @@ class Pawn(Piece):
 
 
 class EnPassantPawn(Piece):
-    def __init__(self, colour, x, y, board, piece_id, pawn_ref):
-        super().__init__(colour, x, y, board, piece_id, "pawn")
-        self.pawn = pawn_ref
+    def __init__(self, colour, x, y, board, pawn):
+        super().__init__(colour, x, y, board, None, None)
+        self.pawn = pawn
 
 
 class King(Piece):
@@ -270,14 +272,14 @@ class King(Piece):
                             self.valid_moves.append((new_x, new_y))
 
         # Castling
-        # Conditions for castling:
-        #     1. King must not have moved, King must not be in check
-        #     For each rook:
-        #         1. Rook must not have moved
-        #         2. Squares between King and Rook must be empty
-        #         3. Squares the King moves through (or to) must not be protected
+        # Only consider if calculating valid moves. Does not affect protected squares.
         if not protected_squares_flag:
-            # Only consider if calculating valid moves. Does not affect protected squares.
+            # Conditions for castling:
+            #     1. King must not have moved, King must not be in check
+            #     For each rook:
+            #         1. Rook must not have moved
+            #         2. Squares between King and Rook must be empty
+            #         3. Squares the King moves through (or to) must not be protected
             if not self.has_moved and self.coords not in opponent_protected_squares:
                 grid = self.board.piece_grid
                 rank = 0 if self.colour else 7

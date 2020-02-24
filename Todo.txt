@@ -1,4 +1,8 @@
-1. Add en passant pawn capturing
+1. Debug en passant pawn capturing
+	- Capturing of pawn en-passant. Check pawn is removed
+	- Expiration of en-passant. Check en-passant pawn is removed at end of turn
+	- Effect on ranged pieces. Ensure ranged pieces can move to squares behind an en-passant pawn.
+		Check for both colour pawns.
 
 202. Add graphic display for end of game.
 203. Add stalemate detection - no moves left, >50 boring moves, position repetition.

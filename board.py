@@ -20,12 +20,17 @@ class Board:
         self.pawn_promotions_black = pygame.image.load("assets/b_pawn_promotions.png").convert_alpha()
 
         self.piece_grid = self.get_grid(8, 8)
+
         # Bitlists for pieces active in the game (not captured).
         # Each piece has an ID (piece.id) which gives its position in the list. The pawns have IDs 0 - 7 going from file
         # 1 to file 8 (x = 0 to x = 7). The back pieces are numbered similarly, but with 8 - 15.
         # The IDs for corresponding white and black pieces are the same (eg: White King == Black King == 12).
         # pieces[0] => white pieces, pieces[1] => black pieces
         self.pieces = [None] * 16, [None] * 16
+
+        # Pointer to an en-passant pawn. Only one may exist at a time. Must be cleared after a move that creates one.
+        self.en_passant_pawn = None
+
         # Groups to quickly draw pieces of each colour
         # piece_sprites[0] => white sprites, piece_sprites[1] => black sprites
         self.piece_sprites = pygame.sprite.Group(), pygame.sprite.Group()
@@ -59,6 +64,21 @@ class Board:
     def add_piece_sprite(self, piece):
         self.piece_sprites[piece.colour].add(piece.sprite)
 
+    def create_piece_on_board(self, piece_class, colour, file, rank, piece_id=None, pawn=None):
+        if piece_class == pieces.EnPassantPawn:
+            assert pawn is not None
+            piece = piece_class(colour, file, rank, self, pawn)
+        else:
+            piece = piece_class(colour, file, rank, self, piece_id)
+            self.pieces[colour][piece_id] = piece
+            self.add_piece_sprite(piece)
+        self.piece_grid[file][rank] = piece
+
+    def remove_en_passant_pawn(self):
+        ep_pawn = self.en_passant_pawn
+        self.piece_grid[ep_pawn.x][ep_pawn.y] = None
+        self.en_passant_pawn = None
+
     def set_pieces(self):
         # Create pieces in starting position on the board.
         # Add pieces to bitlists for each colour, add to piece_grid, add sprites to groups.
@@ -70,28 +90,37 @@ class Board:
             back_rank = 0 if colour else 7
             for file in range(8):
                 # Pawns
-                pawn = pieces.Pawn(colour, file, pawn_rank, self, file)
-                self.pieces[colour][file] = pawn
-                self.piece_grid[file][pawn_rank] = pawn
-                self.add_piece_sprite(pawn)
+                self.create_piece_on_board(pieces.Pawn, colour, file, pawn_rank, file)
                 # Back row pieces
-                piece = piece_classes[file](colour, file, back_rank, self, file + 8)
-                self.pieces[colour][file + 8] = piece
-                self.piece_grid[file][back_rank] = piece
-                self.add_piece_sprite(piece)
+                self.create_piece_on_board(piece_classes[file], colour, file, back_rank, file + 8)
 
-    def capture(self, piece):
-        self.pieces[piece.colour][piece.id] = None
-        self.piece_grid[piece.x][piece.y] = None
-        piece.sprite.kill()
+    def capture(self, piece, capturing_piece):
+        if isinstance(piece, pieces.EnPassantPawn):
+            if isinstance(capturing_piece, pieces.Pawn):
+                piece = piece.pawn
+                self.capture(piece, None)
+                # No need to pass capturing_piece, since it is guaranteed that 'piece' won't be another EnPassantPawn.
+                # Must remove captured pawn from piece_grid manually, since nothing will move to take its place.
+                self.piece_grid[piece.x][piece.y] = None
+        else:
+            self.pieces[piece.colour][piece.id] = None
+            piece.sprite.kill()
+        # Don't need to remove piece off piece_grid, since it will be replaced when the capturing piece is moved.
 
     def move(self, piece, x, y):
         pieces.Piece.validate_coord(x)
         pieces.Piece.validate_coord(y)
 
-        # If the piece is a pawn and is on the second-back rank (so it will be moved to the back rank), promote it.
-        if isinstance(piece, pieces.Pawn) and (piece.y - 6 * piece.step) % 7 == 0:
-            raise exceptions.PawnPromotionError(piece, x, y)
+        # If the piece is a pawn...
+        if isinstance(piece, pieces.Pawn):
+            # ...and is making a double-move, create an en-passant pawn
+            if abs(y - piece.y) > 1:
+                piece_class, colour, file, rank = pieces.EnPassantPawn, piece.colour, piece.x, piece.y + piece.step
+                self.create_piece_on_board(piece_class, colour, file, rank, pawn=piece)
+
+            # ...and is on the second-back rank (so it will be moved to the back rank), promote it.
+            elif (piece.y - 6 * piece.step) % 7 == 0:
+                raise exceptions.PawnPromotionError(piece, x, y)
 
         # If the piece is a Rook, mark it as having moved
         if isinstance(piece, pieces.Rook) and not piece.has_moved:
@@ -108,7 +137,7 @@ class Board:
 
         captured_piece = self.piece_grid[x][y]
         if captured_piece:
-            self.capture(captured_piece)
+            self.capture(captured_piece, piece)
 
         self.piece_grid[piece.x][piece.y] = None
         self.piece_grid[x][y] = piece
@@ -122,17 +151,14 @@ class Board:
 
         captured_piece = self.piece_grid[x][y]
         if captured_piece:
-            self.capture(captured_piece)
+            self.capture(captured_piece, pawn)
 
         # Remove old pawn
         self.piece_grid[pawn.x][pawn.y] = None
         # Don't need to kill sprite, as it was already done when the pawn was picked up
 
         # Create new piece, replace position of old pawn in self.pieces
-        piece = promotion_piece(pawn.colour, x, y, self, pawn.id)
-        self.pieces[pawn.colour][pawn.id] = piece
-        self.piece_grid[x][y] = piece
-        self.add_piece_sprite(piece)
+        self.create_piece_on_board(promotion_piece, pawn.colour, x, y, pawn.id)
 
     def is_check(self, colour):
         # This is used internally when checking valid moves so they do not leave the King in check.
@@ -156,9 +182,8 @@ class Board:
 
         # Move piece on board, but so that it isn't visible to player
         captured_piece = self.piece_grid[x][y]
-        if captured_piece:
+        if captured_piece and not isinstance(captured_piece, pieces.EnPassantPawn):
             self.pieces[captured_piece.colour][captured_piece.id] = None
-            self.piece_grid[captured_piece.x][captured_piece.y] = None
         self.piece_grid[piece.x][piece.y] = None
         self.piece_grid[x][y] = piece
         old_coords = piece.coords
@@ -170,10 +195,12 @@ class Board:
         # Move everything back
         piece.x, piece.y = old_coords
         self.piece_grid[piece.x][piece.y] = piece
-        self.piece_grid[x][y] = None
         if captured_piece:
-            self.pieces[captured_piece.colour][captured_piece.id] = captured_piece
-            self.piece_grid[captured_piece.x][captured_piece.y] = captured_piece
+            if not isinstance(captured_piece, pieces.EnPassantPawn):
+                self.pieces[captured_piece.colour][captured_piece.id] = captured_piece
+            self.piece_grid[x][y] = captured_piece
+        else:
+            self.piece_grid[x][y] = None
         return check
 
     def draw_board(self, surface):
