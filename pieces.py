@@ -106,10 +106,10 @@ class RangedPiece(Piece):
                 if protected_squares_flag:
                     self.protected_squares.append((x_probe, y_probe))
                 if not protected_squares_flag:
-                    if probe_piece is None:
+                    if probe_piece is None or isinstance(probe_piece, EnPassantPawn):
                         self.add_valid_move(x_probe, y_probe)
                     else:
-                        break  # If looking for valid moves, any piece blocks the path - including the opponent's King.
+                        break  # If looking for valid moves, the opponent's King blocks the path.
                 x_probe, y_probe = update_func(x_probe, y_probe)
                 probe_piece = self.board.piece_grid[x_probe][y_probe]
         except ValueError:

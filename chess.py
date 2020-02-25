@@ -33,8 +33,8 @@ class Chess:
 
     def turnover_move(self):
         self.active_colour = not self.active_colour  # Switch players
-        if self.board.en_passant_pawn:
-            self.board.remove_en_passant_pawn()
+        if self.board.en_passant_pawns[self.active_colour] is not None:
+            self.board.remove_expired_en_passant_pawn(self.active_colour)
         try:
             self.check_flag = self.board.is_check_or_checkmate(self.active_colour)
         except exceptions.GameOverError as e:

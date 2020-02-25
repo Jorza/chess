@@ -1,10 +1,5 @@
-1. Debug en passant pawn capturing
-	- Capturing of pawn en-passant. Check pawn is removed
-	- Expiration of en-passant. Check en-passant pawn is removed at end of turn
-	- Effect on ranged pieces. Ensure ranged pieces can move to squares behind an en-passant pawn.
-		Check for both colour pawns.
+1. Add graphic display for end of game.
 
-202. Add graphic display for end of game.
 203. Add stalemate detection - no moves left, >50 boring moves, position repetition.
 204. Improve check detection - handling king pins, blocking check, capturing checking piece
 	- Currently checks every valid move if the King would be in check after the move.
@@ -14,7 +9,6 @@
 		On each path, probe only one space. If it leaves the King in check, do not explore the path further.
 		Only applies for pinned pieces.
 
-299. Add display for end of game.
 300. Add display for move counter, move history
 301. Add chess clock
 302. Add display for captured pieces

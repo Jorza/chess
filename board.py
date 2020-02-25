@@ -28,8 +28,9 @@ class Board:
         # pieces[0] => white pieces, pieces[1] => black pieces
         self.pieces = [None] * 16, [None] * 16
 
-        # Pointer to an en-passant pawn. Only one may exist at a time. Must be cleared after a move that creates one.
-        self.en_passant_pawn = None
+        # Bitlist for an en-passant pawn of each colour. index 0 => white, index 1 => black.
+        # Only one may exist for each colour at a time. Must be cleared after the opponent's turn.
+        self.en_passant_pawns = [None, None]
 
         # Groups to quickly draw pieces of each colour
         # piece_sprites[0] => white sprites, piece_sprites[1] => black sprites
@@ -68,16 +69,20 @@ class Board:
         if piece_class == pieces.EnPassantPawn:
             assert pawn is not None
             piece = piece_class(colour, file, rank, self, pawn)
+            self.en_passant_pawns[colour] = piece
         else:
             piece = piece_class(colour, file, rank, self, piece_id)
             self.pieces[colour][piece_id] = piece
             self.add_piece_sprite(piece)
         self.piece_grid[file][rank] = piece
 
-    def remove_en_passant_pawn(self):
-        ep_pawn = self.en_passant_pawn
-        self.piece_grid[ep_pawn.x][ep_pawn.y] = None
-        self.en_passant_pawn = None
+    def remove_expired_en_passant_pawn(self, colour):
+        ep_pawn = self.en_passant_pawns[colour]
+        self.en_passant_pawns[colour] = None
+
+        pawn_space = self.piece_grid[ep_pawn.x][ep_pawn.y]
+        if isinstance(pawn_space, pieces.EnPassantPawn):
+            self.piece_grid[ep_pawn.x][ep_pawn.y] = None
 
     def set_pieces(self):
         # Create pieces in starting position on the board.
@@ -97,6 +102,10 @@ class Board:
     def capture(self, piece, capturing_piece):
         if isinstance(piece, pieces.EnPassantPawn):
             if isinstance(capturing_piece, pieces.Pawn):
+                # Remove en-passant pawn
+                self.en_passant_pawns[piece.colour] = None
+
+                # Capture pawn
                 piece = piece.pawn
                 self.capture(piece, None)
                 # No need to pass capturing_piece, since it is guaranteed that 'piece' won't be another EnPassantPawn.
